@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import axios from 'axios';
 import { ProfessionalsService } from 'src/departments/health/professionals/professionals.service';
 import { SchedulingService } from '../scheduling/scheduling.service';
+import { CreateSchedulingDto } from '../scheduling/dto/create-scheduling.dto';
 
 interface SessionData {
   messages: any[];
@@ -26,14 +27,21 @@ export class NaturalLanguageService {
 
   private initializeSession(userId: string): void {
     if (!this.sessions.has(userId)) {
+      const user = {
+        id: userId,
+        name: 'Usuário',
+        email: 'erikavsb@mail.com',
+        cpf: '10620901608',
+      };
       const initialMessage = {
         role: 'system',
-        content:
-          'Você é um assistente para uma clínica médica, auxiliando em agendamentos e consultas.',
+        content: `Você é um assistente para uma clínica médica, auxiliando ${user?.name} em agendamentos e consultas.`,
       };
       this.sessions.set(userId, {
         messages: [initialMessage],
-        collectedData: {},
+        collectedData: {
+          patientName: user?.name,
+        },
       });
     }
   }
@@ -70,17 +78,21 @@ export class NaturalLanguageService {
       .join('\n');
 
     const prompt = `
+      Dados para a conversa:
       ${contextPrompt}
+
+      Lista de médicos e suas disponibilidades:
       ${allAvailabilityText}
-      
-      - Se o usuário pedir para agendar um horário com um médico específico e todos os dados estiverem completos, retorne um JSON com o seguinte formato:
+      - caso o usuário pergunte por algum medico, horario ou data, sem dizer o nome do medico ou especialidade, retorne as informações de todos.
+      - Se o usuário pedir para agendar um horário com um médico específico e todos os dados estiverem completos, retorne **apenas** um JSON com o seguinte formato:
       {
         "action": "schedule",
         "professionalName": "Nome do Médico",
         "date": "YYYY-MM-DDTHH:MM:SS",
         "patientName": "Nome do Paciente"
       }
-      - Caso contrário, continue coletando informações adicionais conforme necessário.
+      - Não forneça nenhuma outra explicação ou texto, apenas retorne o JSON. Caso contrário, continue coletando informações adicionais conforme necessário.
+      - **Nota:** O nome do paciente já foi fornecido como "${collectedData.patientName}".
     `;
     messages.push({ role: 'system', content: prompt });
 
@@ -109,10 +121,21 @@ export class NaturalLanguageService {
         try {
           const jsonResponse = JSON.parse(gptResponse);
           if (jsonResponse.action === 'schedule') {
-            collectedData.professionalName = jsonResponse.professionalName;
-            collectedData.appointmentDate = jsonResponse.date;
-            collectedData.patientName = jsonResponse.patientName;
+            const createScheduleDto = new CreateSchedulingDto();
+            const professional =
+              await this.profissionalService.findProfessionalDataByName(
+                jsonResponse.professionalName,
+              );
+            createScheduleDto.professionalId = professional.id;
+            createScheduleDto.userId = Number(userId);
+            createScheduleDto.patientName = jsonResponse.patientName;
+            createScheduleDto.date = jsonResponse.date;
+            createScheduleDto.status = 'scheduled';
+
+            await this.schedulingService.createSchedule(createScheduleDto);
             console.log('Dados para agendamento detectados:', jsonResponse);
+
+            return `Agendamento confirmado com sucesso para o Dr. ${jsonResponse.professionalName} no dia ${jsonResponse.date}.`;
           }
         } catch (jsonError) {
           console.error('Erro ao analisar JSON de resposta:', jsonError);

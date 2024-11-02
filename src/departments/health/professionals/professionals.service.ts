@@ -51,4 +51,11 @@ export class ProfessionalsService {
       })),
     }));
   }
+
+  async findProfessionalDataByName(name: string) {
+    const cleanedName = name.replace(/^(Dr\.|Dra\.)\s*/i, '').trim();
+    return this.prisma.professional.findFirst({
+      where: { name: cleanedName },
+    });
+  }
 }
