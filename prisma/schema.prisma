@@ -1,0 +1,31 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Professional {
+  id           Int       @id @default(autoincrement())
+  name         String
+  specialty    String
+  availability String    // Armazena os horários disponíveis como JSON (ou outra estrutura)
+  schedules    Schedule[] // Relacionamento com Schedule
+}
+
+model Schedule {
+  id             Int          @id @default(autoincrement())
+  professionalId Int
+  patientName    String
+  date           DateTime
+  status         String
+  Professional   Professional @relation(fields: [professionalId], references: [id])
+}
