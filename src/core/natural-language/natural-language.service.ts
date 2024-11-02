@@ -17,7 +17,6 @@ interface SessionData {
 export class NaturalLanguageService {
   private readonly apiUrl = 'https://api.openai.com/v1/chat/completions';
   private readonly apiKey = process.env.OPENAI_API_KEY;
-
   private sessions: Map<string, SessionData> = new Map();
 
   constructor(
@@ -46,28 +45,20 @@ export class NaturalLanguageService {
     }
   }
 
-  async askQuestion(userId: string, question: string): Promise<string> {
-    this.initializeSession(userId);
+  private async createPrompt(userId: string): Promise<string> {
     const session = this.sessions.get(userId)!;
-    const { messages, collectedData } = session;
-
-    messages.push({ role: 'user', content: question });
+    const { collectedData } = session;
 
     let contextPrompt = 'Dados já coletados:\n';
-    if (collectedData.professionalName) {
+    if (collectedData.professionalName)
       contextPrompt += `- Médico: ${collectedData.professionalName}\n`;
-    }
-    if (collectedData.appointmentDate) {
+    if (collectedData.appointmentDate)
       contextPrompt += `- Data: ${collectedData.appointmentDate}\n`;
-    }
-    if (collectedData.patientName) {
+    if (collectedData.patientName)
       contextPrompt += `- Paciente: ${collectedData.patientName}\n`;
-    }
-    contextPrompt += '\n';
 
     const allProfessionals =
       await this.profissionalService.findAllAvailabilities();
-
     const allAvailabilityText = allProfessionals
       .map((p) => {
         const times = p.availability
@@ -77,13 +68,13 @@ export class NaturalLanguageService {
       })
       .join('\n');
 
-    const prompt = `
+    return `
       Dados para a conversa:
       ${contextPrompt}
 
       Lista de médicos e suas disponibilidades:
       ${allAvailabilityText}
-      - caso o usuário pergunte por algum medico, horario ou data, sem dizer o nome do medico ou especialidade, retorne as informações de todos.
+      
       - Se o usuário pedir para agendar um horário com um médico específico e todos os dados estiverem completos, retorne **apenas** um JSON com o seguinte formato:
       {
         "action": "schedule",
@@ -94,8 +85,9 @@ export class NaturalLanguageService {
       - Não forneça nenhuma outra explicação ou texto, apenas retorne o JSON. Caso contrário, continue coletando informações adicionais conforme necessário.
       - **Nota:** O nome do paciente já foi fornecido como "${collectedData.patientName}".
     `;
-    messages.push({ role: 'system', content: prompt });
+  }
 
+  private async callGptApi(messages: any[]): Promise<string> {
     try {
       const response = await axios.post(
         this.apiUrl,
@@ -112,40 +104,62 @@ export class NaturalLanguageService {
           },
         },
       );
-
-      const gptResponse = response.data.choices[0].message.content;
-
-      messages.push({ role: 'assistant', content: gptResponse });
-
-      if (gptResponse.includes('"action": "schedule"')) {
-        try {
-          const jsonResponse = JSON.parse(gptResponse);
-          if (jsonResponse.action === 'schedule') {
-            const createScheduleDto = new CreateSchedulingDto();
-            const professional =
-              await this.profissionalService.findProfessionalDataByName(
-                jsonResponse.professionalName,
-              );
-            createScheduleDto.professionalId = professional.id;
-            createScheduleDto.userId = Number(userId);
-            createScheduleDto.patientName = jsonResponse.patientName;
-            createScheduleDto.date = jsonResponse.date;
-            createScheduleDto.status = 'scheduled';
-
-            await this.schedulingService.createSchedule(createScheduleDto);
-            console.log('Dados para agendamento detectados:', jsonResponse);
-
-            return `Agendamento confirmado com sucesso para o Dr. ${jsonResponse.professionalName} no dia ${jsonResponse.date}.`;
-          }
-        } catch (jsonError) {
-          console.error('Erro ao analisar JSON de resposta:', jsonError);
-        }
-      }
-
-      return gptResponse;
+      return response.data.choices[0].message.content;
     } catch (error) {
       console.error('Erro ao conectar com a API do OpenAI:', error);
-      return 'Desculpe, não consegui processar sua pergunta no momento.';
+      throw new Error(
+        'Desculpe, não consegui processar sua pergunta no momento.',
+      );
     }
+  }
+
+  private async processGptResponse(
+    gptResponse: string,
+    userId: string,
+  ): Promise<string> {
+    const session = this.sessions.get(userId)!;
+    session.messages.push({ role: 'assistant', content: gptResponse });
+
+    if (gptResponse.includes('"action": "schedule"')) {
+      try {
+        const jsonResponse = JSON.parse(gptResponse);
+        if (jsonResponse.action === 'schedule') {
+          const professional =
+            await this.profissionalService.findProfessionalDataByName(
+              jsonResponse.professionalName,
+            );
+          if (!professional) {
+            return `Não foi possível encontrar o profissional ${jsonResponse.professionalName}.`;
+          }
+
+          const createScheduleDto = new CreateSchedulingDto();
+          createScheduleDto.professionalId = professional.id;
+          createScheduleDto.userId = Number(userId);
+          createScheduleDto.patientName = jsonResponse.patientName;
+          createScheduleDto.date = jsonResponse.date;
+          createScheduleDto.status = 'scheduled';
+
+          await this.schedulingService.createSchedule(createScheduleDto);
+          return `Agendamento confirmado com sucesso para o Dr. ${jsonResponse.professionalName} no dia ${jsonResponse.date}.`;
+        }
+      } catch (jsonError) {
+        console.error('Erro ao analisar JSON de resposta:', jsonError);
+        return 'Desculpe, houve um erro ao processar o agendamento.';
+      }
+    }
+
+    return gptResponse;
+  }
+
+  async askQuestion(userId: string, question: string): Promise<string> {
+    this.initializeSession(userId);
+    const session = this.sessions.get(userId)!;
+
+    session.messages.push({ role: 'user', content: question });
+    const prompt = await this.createPrompt(userId);
+    session.messages.push({ role: 'system', content: prompt });
+
+    const gptResponse = await this.callGptApi(session.messages);
+    return this.processGptResponse(gptResponse, userId);
   }
 }
