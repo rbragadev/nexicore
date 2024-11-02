@@ -12,9 +12,15 @@ export class NaturalLanguageController {
     @Body('userId') userId: string,
     @Body('question') question: string,
   ) {
+    const departmentConfig = {
+      departmentName: 'health',
+      promptTemplate:
+        'Você é um assistente para uma clínica médica, auxiliando o usuário em agendamentos e consultas.',
+    };
     const response = await this.naturalLanguageService.askQuestion(
       userId,
       question,
+      departmentConfig,
     );
     return { response };
   }

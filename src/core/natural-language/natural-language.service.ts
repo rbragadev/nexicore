@@ -4,6 +4,11 @@ import { ProfessionalsService } from 'src/departments/health/professionals/profe
 import { SchedulingService } from '../scheduling/scheduling.service';
 import { CreateSchedulingDto } from '../scheduling/dto/create-scheduling.dto';
 
+interface DepartmentConfig {
+  departmentName: string;
+  promptTemplate: string;
+}
+
 interface SessionData {
   messages: any[];
   collectedData: {
@@ -24,7 +29,7 @@ export class NaturalLanguageService {
     private readonly schedulingService: SchedulingService,
   ) {}
 
-  private initializeSession(userId: string): void {
+  private initializeSession(userId: string, config: DepartmentConfig): void {
     if (!this.sessions.has(userId)) {
       const user = {
         id: userId,
@@ -34,7 +39,7 @@ export class NaturalLanguageService {
       };
       const initialMessage = {
         role: 'system',
-        content: `Você é um assistente para uma clínica médica, auxiliando ${user?.name} em agendamentos e consultas.`,
+        content: `Você é um assistente para o departamento de ${config.departmentName}, auxiliando ${user?.name} em tarefas específicas.`,
       };
       this.sessions.set(userId, {
         messages: [initialMessage],
@@ -45,7 +50,10 @@ export class NaturalLanguageService {
     }
   }
 
-  private async createPrompt(userId: string): Promise<string> {
+  private async createPrompt(
+    userId: string,
+    config: DepartmentConfig,
+  ): Promise<string> {
     const session = this.sessions.get(userId)!;
     const { collectedData } = session;
 
@@ -69,7 +77,7 @@ export class NaturalLanguageService {
       .join('\n');
 
     return `
-      Dados para a conversa:
+      ${config.promptTemplate}
       ${contextPrompt}
 
       Lista de médicos e suas disponibilidades:
@@ -151,12 +159,16 @@ export class NaturalLanguageService {
     return gptResponse;
   }
 
-  async askQuestion(userId: string, question: string): Promise<string> {
-    this.initializeSession(userId);
+  async askQuestion(
+    userId: string,
+    question: string,
+    config: DepartmentConfig,
+  ): Promise<string> {
+    this.initializeSession(userId, config);
     const session = this.sessions.get(userId)!;
 
     session.messages.push({ role: 'user', content: question });
-    const prompt = await this.createPrompt(userId);
+    const prompt = await this.createPrompt(userId, config);
     session.messages.push({ role: 'system', content: prompt });
 
     const gptResponse = await this.callGptApi(session.messages);

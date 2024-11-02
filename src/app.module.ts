@@ -6,6 +6,8 @@ import { SchedulingModule } from './core/scheduling/scheduling.module';
 import { NaturalLanguageModule } from './core/natural-language/natural-language.module';
 import { ProfessionalsModule } from './departments/health/professionals/professionals.module';
 import { InventoryModule } from './departments/health/inventory/inventory.module';
+import { DialogflowModule } from './core/dialogflow/dialogflow.module';
+import { UserModule } from './core/user/user.module';
 
 @Module({
   imports: [
@@ -13,6 +15,8 @@ import { InventoryModule } from './departments/health/inventory/inventory.module
     NaturalLanguageModule,
     ProfessionalsModule,
     InventoryModule,
+    DialogflowModule,
+    UserModule,
   ],
   controllers: [AppController],
   providers: [AppService, PrismaService],
