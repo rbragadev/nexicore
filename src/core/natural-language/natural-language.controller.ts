@@ -8,8 +8,14 @@ export class NaturalLanguageController {
   ) {}
 
   @Post('ask')
-  async askQuestion(@Body('question') question: string) {
-    const response = await this.naturalLanguageService.askQuestion(question);
+  async askQuestion(
+    @Body('userId') userId: string,
+    @Body('question') question: string,
+  ) {
+    const response = await this.naturalLanguageService.askQuestion(
+      userId,
+      question,
+    );
     return { response };
   }
 }

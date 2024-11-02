@@ -1,15 +1,62 @@
 import { Injectable } from '@nestjs/common';
 import axios from 'axios';
 import { ProfessionalsService } from 'src/departments/health/professionals/professionals.service';
+import { SchedulingService } from '../scheduling/scheduling.service';
+
+interface SessionData {
+  messages: any[];
+  collectedData: {
+    professionalName?: string;
+    appointmentDate?: string;
+    patientName?: string;
+  };
+}
 
 @Injectable()
 export class NaturalLanguageService {
   private readonly apiUrl = 'https://api.openai.com/v1/chat/completions';
   private readonly apiKey = process.env.OPENAI_API_KEY;
 
-  constructor(private readonly profissionalService: ProfessionalsService) {}
+  private sessions: Map<string, SessionData> = new Map();
 
-  async askQuestion(question: string): Promise<string> {
+  constructor(
+    private readonly profissionalService: ProfessionalsService,
+    private readonly schedulingService: SchedulingService,
+  ) {}
+
+  private initializeSession(userId: string): void {
+    if (!this.sessions.has(userId)) {
+      const initialMessage = {
+        role: 'system',
+        content:
+          'Você é um assistente para uma clínica médica, auxiliando em agendamentos e consultas.',
+      };
+      this.sessions.set(userId, {
+        messages: [initialMessage],
+        collectedData: {},
+      });
+    }
+  }
+
+  async askQuestion(userId: string, question: string): Promise<string> {
+    this.initializeSession(userId);
+    const session = this.sessions.get(userId)!;
+    const { messages, collectedData } = session;
+
+    messages.push({ role: 'user', content: question });
+
+    let contextPrompt = 'Dados já coletados:\n';
+    if (collectedData.professionalName) {
+      contextPrompt += `- Médico: ${collectedData.professionalName}\n`;
+    }
+    if (collectedData.appointmentDate) {
+      contextPrompt += `- Data: ${collectedData.appointmentDate}\n`;
+    }
+    if (collectedData.patientName) {
+      contextPrompt += `- Paciente: ${collectedData.patientName}\n`;
+    }
+    contextPrompt += '\n';
+
     const allProfessionals =
       await this.profissionalService.findAllAvailabilities();
 
@@ -23,21 +70,26 @@ export class NaturalLanguageService {
       .join('\n');
 
     const prompt = `
-      Você é um assistente para uma clínica médica. Você tem a seguinte lista de médicos e suas disponibilidades:
+      ${contextPrompt}
       ${allAvailabilityText}
-      Responda de acordo com a pergunta do usuário. Se o usuário perguntar por um médico específico, forneça os horários desse médico. Se o usuário perguntar por todos os médicos disponíveis, responda com uma lista completa dos médicos e suas especialidades e horários.
-      Pergunta do usuário: "${question}"
+      
+      - Se o usuário pedir para agendar um horário com um médico específico e todos os dados estiverem completos, retorne um JSON com o seguinte formato:
+      {
+        "action": "schedule",
+        "professionalName": "Nome do Médico",
+        "date": "YYYY-MM-DDTHH:MM:SS",
+        "patientName": "Nome do Paciente"
+      }
+      - Caso contrário, continue coletando informações adicionais conforme necessário.
     `;
+    messages.push({ role: 'system', content: prompt });
 
     try {
       const response = await axios.post(
         this.apiUrl,
         {
-          model: 'gpt-3.5-turbo', // Ou 'gpt-3.5-turbo' se preferir
-          messages: [
-            { role: 'system', content: prompt },
-            { role: 'user', content: question },
-          ],
+          model: 'gpt-3.5-turbo',
+          messages,
           max_tokens: 150,
           temperature: 0.7,
         },
@@ -49,7 +101,25 @@ export class NaturalLanguageService {
         },
       );
 
-      return response.data.choices[0].message.content;
+      const gptResponse = response.data.choices[0].message.content;
+
+      messages.push({ role: 'assistant', content: gptResponse });
+
+      if (gptResponse.includes('"action": "schedule"')) {
+        try {
+          const jsonResponse = JSON.parse(gptResponse);
+          if (jsonResponse.action === 'schedule') {
+            collectedData.professionalName = jsonResponse.professionalName;
+            collectedData.appointmentDate = jsonResponse.date;
+            collectedData.patientName = jsonResponse.patientName;
+            console.log('Dados para agendamento detectados:', jsonResponse);
+          }
+        } catch (jsonError) {
+          console.error('Erro ao analisar JSON de resposta:', jsonError);
+        }
+      }
+
+      return gptResponse;
     } catch (error) {
       console.error('Erro ao conectar com a API do OpenAI:', error);
       return 'Desculpe, não consegui processar sua pergunta no momento.';

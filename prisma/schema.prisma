@@ -13,6 +13,16 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model User {
+  id        Int        @id @default(autoincrement())
+  name      String
+  email     String     @unique
+  cpf       String     @unique
+  schedules Schedule[] // Relacionamento com Schedule
+
+  // Outros dados adicionais podem ser incluídos, como histórico de atendimentos, se necessário
+}
+
 model Professional {
   id           Int       @id @default(autoincrement())
   name         String
@@ -24,8 +34,11 @@ model Professional {
 model Schedule {
   id             Int          @id @default(autoincrement())
   professionalId Int
+  userId         Int          // Relacionamento com User
   patientName    String
   date           DateTime
   status         String
   Professional   Professional @relation(fields: [professionalId], references: [id])
+  User           User         @relation(fields: [userId], references: [id])
 }
+

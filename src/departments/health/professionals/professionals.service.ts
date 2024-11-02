@@ -21,6 +21,7 @@ export class ProfessionalsService {
     }[];
 
     return {
+      id: professional.id,
       name: professional.name,
       specialty: professional.specialty,
       availability: availability.map((a) => ({
