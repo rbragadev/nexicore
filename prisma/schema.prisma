@@ -17,7 +17,7 @@ model Professional {
   id           Int       @id @default(autoincrement())
   name         String
   specialty    String
-  availability String    // Armazena os horários disponíveis como JSON (ou outra estrutura)
+  availability Json      // Armazena os horários disponíveis como JSON
   schedules    Schedule[] // Relacionamento com Schedule
 }
 

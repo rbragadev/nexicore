@@ -1,26 +1,53 @@
 import { Injectable } from '@nestjs/common';
-import { CreateProfessionalDto } from './dto/create-professional.dto';
-import { UpdateProfessionalDto } from './dto/update-professional.dto';
+
+import { PrismaService } from 'src/core/prisma/prisma.service';
 
 @Injectable()
 export class ProfessionalsService {
-  create(createProfessionalDto: CreateProfessionalDto) {
-    return 'This action adds a new professional';
+  constructor(private prisma: PrismaService) {}
+  async findAvailabilityByName(name: string) {
+    const professional = await this.prisma.professional.findFirst({
+      where: { name },
+    });
+
+    if (!professional) {
+      return null;
+    }
+
+    const availability = professional.availability as {
+      dayOfWeek: number;
+      startTime: string;
+      endTime: string;
+    }[];
+
+    return {
+      name: professional.name,
+      specialty: professional.specialty,
+      availability: availability.map((a) => ({
+        dayOfWeek: a.dayOfWeek,
+        startTime: a.startTime,
+        endTime: a.endTime,
+      })),
+    };
   }
 
-  findAll() {
-    return `This action returns all professionals`;
-  }
+  async findAllAvailabilities() {
+    const professionals = await this.prisma.professional.findMany();
 
-  findOne(id: number) {
-    return `This action returns a #${id} professional`;
-  }
-
-  update(id: number, updateProfessionalDto: UpdateProfessionalDto) {
-    return `This action updates a #${id} professional`;
-  }
-
-  remove(id: number) {
-    return `This action removes a #${id} professional`;
+    return professionals.map((professional) => ({
+      name: professional.name,
+      specialty: professional.specialty,
+      availability: (
+        professional.availability as {
+          dayOfWeek: number;
+          startTime: string;
+          endTime: string;
+        }[]
+      ).map((a) => ({
+        dayOfWeek: a.dayOfWeek,
+        startTime: a.startTime,
+        endTime: a.endTime,
+      })),
+    }));
   }
 }
