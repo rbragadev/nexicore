@@ -5,7 +5,7 @@ import { DialogflowService } from './dialogflow.service';
 export class DialogflowController {
   constructor(private readonly dialogflowService: DialogflowService) {}
 
-  @Post('welcome')
+  @Post('webhook')
   async welcomeIntent(@Query('id') id: string) {
     const welcomeMessage = await this.dialogflowService.welcomeIntent(+id);
     return welcomeMessage;
