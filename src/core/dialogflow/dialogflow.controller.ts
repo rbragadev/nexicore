@@ -1,4 +1,4 @@
-import { Body, Controller, Post } from '@nestjs/common';
+import { Body, Controller, HttpCode, Post } from '@nestjs/common';
 import { DialogflowService } from './dialogflow.service';
 
 @Controller('dialogflow')
@@ -6,6 +6,7 @@ export class DialogflowController {
   constructor(private readonly dialogflowService: DialogflowService) {}
 
   @Post('webhook')
+  @HttpCode(200)
   async welcomeIntent(@Body() body: any) {
     console.log('Recebido do Dialogflow:', JSON.stringify(body, null, 2));
 

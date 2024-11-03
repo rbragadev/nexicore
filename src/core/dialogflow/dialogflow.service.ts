@@ -16,15 +16,14 @@ export class DialogflowService {
 
   private formatFulfillmentMessage(text: string): any {
     return {
-      fulfillment_response: {
-        messages: [
-          {
-            text: {
-              text: [text],
-            },
+      fulfillmentText: text,
+      fulfillmentMessages: [
+        {
+          text: {
+            text: [text],
           },
-        ],
-      },
+        },
+      ],
     };
   }
 }
