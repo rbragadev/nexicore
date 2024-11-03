@@ -9,8 +9,11 @@ export class DialogflowController {
   async welcomeIntent(@Body() body: any) {
     console.log('Recebido do Dialogflow:', JSON.stringify(body, null, 2));
 
-    const id = body.sessionInfo.parameters.id;
+    // Acessa o ID no local correto (queryResult.parameters)
+    const id = body.queryResult?.parameters?.id;
     console.log('ID:', id);
+
+    // Chama o serviço com o ID extraído
     const welcomeMessage = await this.dialogflowService.welcomeIntent(+id);
     return welcomeMessage;
   }
