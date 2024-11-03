@@ -7,6 +7,8 @@ export class DialogflowController {
 
   @Post('webhook')
   async welcomeIntent(@Body() body: any) {
+    console.log('Recebido do Dialogflow:', JSON.stringify(body, null, 2));
+
     const id = body.sessionInfo.parameters.id;
     console.log('ID:', id);
     const welcomeMessage = await this.dialogflowService.welcomeIntent(+id);
