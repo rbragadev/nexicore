@@ -13,7 +13,7 @@ export class DialogflowService {
 
   private formatFulfillmentMessage(text: string): any {
     return {
-      fulfillmentResponse: {
+      fulfillment_response: {
         messages: [
           {
             text: {
