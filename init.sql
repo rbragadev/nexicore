@@ -1,0 +1,1 @@
+CREATE SCHEMA IF NOT EXISTS nexicore_schema AUTHORIZATION nexicore_user;
