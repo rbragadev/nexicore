@@ -8,32 +8,166 @@ datasource db {
   shadowDatabaseUrl = env("SHADOW_DATABASE_URL")
 }
 
-model User {
-  user_id      Int           @id @default(autoincrement())
+// Modelo user
+model user {
+  user_id      Int              @id @default(autoincrement())
   name         String
-  email        String        @unique
-  cpf          String        @unique
+  email        String           @unique
+  cpf          String           @unique
   phone_number String?
   address      String?
   birthdate    DateTime?
   avatar       String?
   roles        String[]
   password     String
-  is_active    Boolean       @default(true)
-  createdAt    DateTime      @default(now())
-  addresses    UserAddress[]
+  is_active    Boolean          @default(true)
+  created_at   DateTime         @default(now())
+
+  addresses    user_address[]
+  ratings      rating[]
+  schedules    schedule[]
 }
 
-model UserAddress {
-  id           Int     @id @default(autoincrement())
-  user_id      Int
-  street       String
-  number       String
-  complement   String?
-  neighborhood String
-  city         String
-  state        String
-  country      String
-  cep          String
-  user         User    @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+// Modelo user_address
+model user_address {
+  address_id      Int       @id @default(autoincrement())
+  user_id         Int
+  street          String
+  number          String
+  complement      String?
+  neighborhood    String
+  city            String
+  state           String
+  country         String
+  cep             String
+
+  user            user       @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+}
+
+// Modelo department
+model department {
+  department_id   Int                 @id @default(autoincrement())
+  name            String
+  description     String?
+  created_at      DateTime            @default(now())
+
+  professionals   professional[]
+  ratings         rating[]
+  availabilities  availability[]
+  procedures      procedure[]
+  schedules       schedule[]
+}
+
+// Modelo professional
+model professional {
+  professional_id Int                 @id @default(autoincrement())
+  name            String
+  email           String?             @unique
+  cpf             String?             @unique
+  role            String?
+  created_at      DateTime            @default(now())
+
+  department_id   Int?
+  department      department?         @relation(fields: [department_id], references: [department_id], onDelete: SetNull)
+
+  register_info   register_info[]
+  availabilities  availability[]
+  procedures      professional_procedure[]
+  ratings         rating[]
+  schedules       schedule[]
+}
+
+// Modelo register_info
+model register_info {
+  register_info_id Int              @id @default(autoincrement())
+  professional_id  Int
+  register_type    String
+  register_number  String
+  valid_date       DateTime
+
+  professional     professional     @relation(fields: [professional_id], references: [professional_id], onDelete: Cascade)
+}
+
+// Modelo availability
+model availability {
+  availability_id  Int              @id @default(autoincrement())
+  professional_id  Int?
+  department_id    Int?
+  day_of_week      String
+  start_time       DateTime
+  end_time         DateTime
+  is_active        Boolean          @default(true)
+
+  professional     professional?    @relation(fields: [professional_id], references: [professional_id], onDelete: Cascade)
+  department       department?      @relation(fields: [department_id], references: [department_id], onDelete: Cascade)
+}
+
+// Modelo procedure
+model procedure {
+  procedure_id     Int                     @id @default(autoincrement())
+  name             String
+  base_price       Float
+  base_duration    Int
+
+  department_id    Int
+  department       department              @relation(fields: [department_id], references: [department_id], onDelete: Cascade)
+  
+  professional_procedures professional_procedure[]
+}
+
+// Modelo professional_procedure
+model professional_procedure {
+  professional_procedure_id Int            @id @default(autoincrement())
+  professional_id           Int
+  procedure_id              Int
+  custom_price              Float?
+  custom_duration           Int?
+
+  professional              professional    @relation(fields: [professional_id], references: [professional_id], onDelete: Cascade)
+  procedure                 procedure       @relation(fields: [procedure_id], references: [procedure_id], onDelete: Cascade)
+}
+
+// Modelo rating
+model rating {
+  rating_id       Int               @id @default(autoincrement())
+  user_id         Int
+  professional_id Int?
+  department_id   Int?
+  value           Int
+  comment         String?
+  created_at      DateTime          @default(now())
+  updated_at      DateTime          @updatedAt
+
+  user            user              @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+  professional    professional?     @relation(fields: [professional_id], references: [professional_id], onDelete: Cascade)
+  department      department?       @relation(fields: [department_id], references: [department_id], onDelete: Cascade)
+}
+
+// Modelo schedule
+model schedule {
+  schedule_id     Int               @id @default(autoincrement())
+  user_id         Int
+  professional_id Int?
+  department_id   Int?
+  start_date      DateTime
+  end_date        DateTime
+  status          String
+
+  user            user              @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+  professional    professional?     @relation(fields: [professional_id], references: [professional_id], onDelete: Cascade)
+  department      department?       @relation(fields: [department_id], references: [department_id], onDelete: Cascade)
+
+  session_details session_detail[]
+}
+
+// Modelo session_detail
+model session_detail {
+  session_detail_id Int              @id @default(autoincrement())
+  schedule_id       Int
+  content_type      String
+  content_text      String?
+  content_url       String?
+  created_at        DateTime         @default(now())
+
+  schedule          schedule         @relation(fields: [schedule_id], references: [schedule_id], onDelete: Cascade)
 }
