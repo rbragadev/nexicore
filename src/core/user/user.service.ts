@@ -3,13 +3,23 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreateUserDto } from './dtos/create-user.dto';
 import { UpdateUserDto } from './dtos/update-user.dto';
 import { PaginationDto } from 'src/common/dtos/pagination.dto';
+import { PasswordService } from 'src/common/services/password.service';
 
 @Injectable()
 export class UserService {
+  private readonly passwordService = new PasswordService();
   constructor(private readonly prisma: PrismaService) {}
 
   async create(data: CreateUserDto) {
-    return this.prisma.user.create({ data });
+    const hashedPassword = await this.passwordService.hashPassword(
+      data.password,
+    );
+    const userData = {
+      ...data,
+      password: hashedPassword,
+    };
+
+    return this.prisma.user.create({ data: userData });
   }
 
   async update(user_id: number, data: UpdateUserDto) {
