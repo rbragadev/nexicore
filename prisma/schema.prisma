@@ -1,45 +1,39 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("HEROKU_POSTGRESQL_WHITE_URL")
+  provider          = "postgresql"
+  url               = env("DATABASE_URL")
   shadowDatabaseUrl = env("SHADOW_DATABASE_URL")
 }
 
 model User {
-  id        Int        @id @default(autoincrement())
-  name      String
-  email     String     @unique
-  cpf       String     @unique
-  schedules Schedule[] // Relacionamento com Schedule
-
-  // Outros dados adicionais podem ser incluídos, como histórico de atendimentos, se necessário
-}
-
-model Professional {
-  id           Int       @id @default(autoincrement())
+  user_id      Int           @id @default(autoincrement())
   name         String
-  specialty    String
-  availability Json      // Armazena os horários disponíveis como JSON
-  schedules    Schedule[] // Relacionamento com Schedule
+  email        String        @unique
+  cpf          String        @unique
+  phone_number String?
+  address      String?
+  birthdate    DateTime?
+  avatar       String?
+  roles        String[]
+  password     String
+  is_active    Boolean       @default(true)
+  createdAt    DateTime      @default(now())
+  addresses    UserAddress[]
 }
 
-model Schedule {
-  id             Int          @id @default(autoincrement())
-  professionalId Int
-  userId         Int          // Relacionamento com User
-  patientName    String
-  date           DateTime
-  status         String
-  Professional   Professional @relation(fields: [professionalId], references: [id])
-  User           User         @relation(fields: [userId], references: [id])
+model UserAddress {
+  id           Int     @id @default(autoincrement())
+  user_id      Int
+  street       String
+  number       String
+  complement   String?
+  neighborhood String
+  city         String
+  state        String
+  country      String
+  cep          String
+  user         User    @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
 }
-
