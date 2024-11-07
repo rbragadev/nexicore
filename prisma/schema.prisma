@@ -8,15 +8,13 @@ datasource db {
   shadowDatabaseUrl = env("SHADOW_DATABASE_URL")
 }
 
-// Modelo user
 model user {
   user_id      Int              @id @default(autoincrement())
   name         String
   email        String           @unique
   cpf          String           @unique
   phone_number String?
-  address      String?
-  birthdate    DateTime?
+  birthdate    DateTime         @db.Date
   avatar       String?
   roles        String[]
   password     String
@@ -28,7 +26,6 @@ model user {
   schedules    schedule[]
 }
 
-// Modelo user_address
 model user_address {
   address_id      Int       @id @default(autoincrement())
   user_id         Int
@@ -44,7 +41,6 @@ model user_address {
   user            user       @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
 }
 
-// Modelo department
 model department {
   department_id   Int                 @id @default(autoincrement())
   name            String
@@ -58,7 +54,6 @@ model department {
   schedules       schedule[]
 }
 
-// Modelo professional
 model professional {
   professional_id Int                 @id @default(autoincrement())
   name            String
@@ -77,7 +72,6 @@ model professional {
   schedules       schedule[]
 }
 
-// Modelo register_info
 model register_info {
   register_info_id Int              @id @default(autoincrement())
   professional_id  Int
@@ -88,7 +82,6 @@ model register_info {
   professional     professional     @relation(fields: [professional_id], references: [professional_id], onDelete: Cascade)
 }
 
-// Modelo availability
 model availability {
   availability_id  Int              @id @default(autoincrement())
   professional_id  Int?
@@ -102,7 +95,6 @@ model availability {
   department       department?      @relation(fields: [department_id], references: [department_id], onDelete: Cascade)
 }
 
-// Modelo procedure
 model procedure {
   procedure_id     Int                     @id @default(autoincrement())
   name             String
@@ -115,7 +107,6 @@ model procedure {
   professional_procedures professional_procedure[]
 }
 
-// Modelo professional_procedure
 model professional_procedure {
   professional_procedure_id Int            @id @default(autoincrement())
   professional_id           Int
@@ -127,7 +118,6 @@ model professional_procedure {
   procedure                 procedure       @relation(fields: [procedure_id], references: [procedure_id], onDelete: Cascade)
 }
 
-// Modelo rating
 model rating {
   rating_id       Int               @id @default(autoincrement())
   user_id         Int
@@ -143,7 +133,6 @@ model rating {
   department      department?       @relation(fields: [department_id], references: [department_id], onDelete: Cascade)
 }
 
-// Modelo schedule
 model schedule {
   schedule_id     Int               @id @default(autoincrement())
   user_id         Int
@@ -160,7 +149,6 @@ model schedule {
   session_details session_detail[]
 }
 
-// Modelo session_detail
 model session_detail {
   session_detail_id Int              @id @default(autoincrement())
   schedule_id       Int
