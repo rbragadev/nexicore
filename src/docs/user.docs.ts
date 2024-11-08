@@ -4,22 +4,25 @@ import {
   ApiResponse,
   ApiBody,
   ApiParam,
-  ApiTags,
+  ApiQuery,
+  ApiExtraModels,
+  getSchemaPath,
 } from '@nestjs/swagger';
+import { PaginationDto } from 'src/common/dtos/pagination.dto';
 import { CreateUserDto } from 'src/core/user/dtos/create-user.dto';
+import { FilterUserDto } from 'src/core/user/dtos/filter.user.dto';
+import { SearchUserDto } from 'src/core/user/dtos/search-user.dto';
 import { UpdateUserDto } from 'src/core/user/dtos/update-user.dto';
 
-// Decorator para o endpoint de criação de usuário
 export function CreateUserDocs() {
   return applyDecorators(
-    ApiTags('users'),
     ApiOperation({
       summary: 'Cria um novo usuário',
       description: 'Este endpoint cria um novo usuário no sistema.',
     }),
     ApiBody({
       description: 'Dados para criação do usuário',
-      type: CreateUserDto, // Referencia o DTO diretamente aqui
+      type: CreateUserDto,
     }),
     ApiResponse({
       status: 201,
@@ -32,10 +35,8 @@ export function CreateUserDocs() {
   );
 }
 
-// Decorator para o endpoint de atualização de usuário
 export function UpdateUserDocs() {
   return applyDecorators(
-    ApiTags('users'),
     ApiOperation({
       summary: 'Atualiza um usuário existente',
       description:
@@ -61,10 +62,8 @@ export function UpdateUserDocs() {
   );
 }
 
-// Decorator para o endpoint de busca de usuário pelo ID
 export function FindUserByIdDocs() {
   return applyDecorators(
-    ApiTags('users'),
     ApiOperation({
       summary: 'Busca um usuário pelo ID',
       description:
@@ -95,6 +94,107 @@ export function FindUserByIdDocs() {
     ApiResponse({
       status: 404,
       description: 'Usuário não encontrado.',
+    }),
+  );
+}
+
+export function FindUserByFiltersDocs() {
+  return applyDecorators(
+    ApiOperation({
+      summary: 'Busca usuários com base em filtros',
+      description:
+        'Este endpoint permite buscar usuários usando filtros como ID, CPF e número de telefone.',
+    }),
+    ApiExtraModels(FilterUserDto),
+    ApiQuery({
+      name: 'filters',
+      description: 'Parâmetros de filtro para a busca de usuários',
+      required: false,
+      schema: {
+        $ref: getSchemaPath(FilterUserDto),
+      },
+    }),
+    ApiResponse({
+      status: 200,
+      description: 'Usuários encontrados com sucesso.',
+      schema: {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: {
+            user_id: { type: 'number', example: 1 },
+            name: { type: 'string', example: 'João Silva' },
+            email: { type: 'string', example: 'joao.silva@example.com' },
+            cpf: { type: 'string', example: '123.456.789-00' },
+            phone_number: { type: 'string', example: '+55 (11) 99999-9999' },
+            is_active: { type: 'boolean', example: true },
+          },
+        },
+      },
+    }),
+    ApiResponse({
+      status: 404,
+      description: 'Nenhum usuário encontrado com os filtros aplicados.',
+    }),
+  );
+}
+
+export function SearchUsersDocs() {
+  return applyDecorators(
+    ApiOperation({
+      summary: 'Busca parcial de usuários',
+      description:
+        'Permite buscar usuários por partes do nome, email, CPF ou telefone.',
+    }),
+    ApiExtraModels(SearchUserDto, PaginationDto),
+    ApiQuery({
+      name: 'searchDto',
+      required: false,
+      schema: { $ref: getSchemaPath(SearchUserDto) },
+    }),
+    ApiQuery({
+      name: 'pagination',
+      required: false,
+      schema: { $ref: getSchemaPath(PaginationDto) },
+    }),
+    ApiResponse({
+      status: 200,
+      description: 'Usuários encontrados com sucesso.',
+      schema: {
+        type: 'object',
+        properties: {
+          data: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                user_id: { type: 'number', example: 1 },
+                name: { type: 'string', example: 'João Silva' },
+                email: { type: 'string', example: 'joao.silva@example.com' },
+                cpf: { type: 'string', example: '123.456.789-00' },
+                phone_number: {
+                  type: 'string',
+                  example: '+55 (11) 99999-9999',
+                },
+                is_active: { type: 'boolean', example: true },
+              },
+            },
+          },
+          meta: {
+            type: 'object',
+            properties: {
+              total: { type: 'number', example: 100 },
+              page: { type: 'number', example: 1 },
+              pageSize: { type: 'number', example: 10 },
+              pageCount: { type: 'number', example: 10 },
+            },
+          },
+        },
+      },
+    }),
+    ApiResponse({
+      status: 404,
+      description: 'Nenhum usuário encontrado.',
     }),
   );
 }
